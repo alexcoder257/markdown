@@ -1,5 +1,3 @@
-# markdown branchs
-
 - javascript ✅
 - react
 - react-store
