@@ -83,7 +83,7 @@ export const rootReducers = combineReducers({
 });
 ```
 
-#### Provider
+#### 5. Provider
 
 @/main.ts
 
@@ -104,7 +104,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-#### 5. Usage
+#### 6. Usage
 
 ```javascript
 import "./App.css";
@@ -124,4 +124,112 @@ function App() {
 }
 
 export default App;
+```
+
+# Redux Thunk
+
+Redux thunk giúp tách biệt logic xử lý bất đồng bộ, call API và tương tác với store ra khỏi UI. Thuận tiện cho việc test cũng như với dự án lớn phát triển sau này. Nó còn support handle các trạng thái như pending, fulfilled hay rejected dựa vào đó có thể show loading hoặc error nếu cần.
+
+#### Setup slice
+
+- productId: tương ứng với payload truyền vào
+- thunkAPI: có thêm các thuộc tính như getState, dispatch, rejectWithValue ,... để tương tác với state
+- action.payload: chính là giá trị mà createAsyncThunk trả về
+
+```javascript
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+
+type Product = {
+  id: number;
+  title: string;
+  price: number;
+  image: string;
+  category: string;
+};
+
+export const fetchProducts = createAsyncThunk<Product[], number>(
+  "product/fetchProducts",
+  async (productId, thunkAPI) => {
+    try {
+      console.log({ productId });
+      const res = await fetch("https://fakestoreapi.com/products");
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        return thunkAPI.rejectWithValue(error.message);
+          } else {
+        return "Something went wrong!";
+      }
+    }
+  }
+);
+
+const productSlice = createSlice({
+  name: "product",
+  initialState: {
+    data: [] as Product[],
+    loading: false,
+    error: null as string | null,
+  },
+  reducers: {}, // Có thể thêm các reducers thông thường nếu cần
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchProducts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProducts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(fetchProducts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as null | string;
+      });
+  },
+});
+
+export default productSlice.reducer;
+```
+
+#### Usage
+
+```javascript
+import { useEffect } from "react";
+import "./App.css";
+import { useAppDispatch, useAppSelector } from "./hooks";
+import { fetchProducts } from "./features/product/productSlice";
+
+function App() {
+  const dispatch = useAppDispatch();
+  const { data, loading, error } = useAppSelector((state) => state.product);
+
+  useEffect(() => {
+    dispatch(fetchProducts(1));
+  }, [dispatch]);
+
+  if (loading) return <p>Loading...</p>;
+
+  if (error) return <p>Error: {error}</p>;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+      {data.map((item) => (
+        <div
+          key={item.id}
+          style={{ border: "2px solid #ededed", padding: "24px" }}
+        >
+          <p style={{ whiteSpace: "wrap", width: "400px" }}>{item.title}</p>
+          <p>Price: {item.price}$</p>
+          <img
+            src={item.image}
+            alt="img"
+            style={{ width: "400px", height: "400px", objectFit: "contain" }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 ```
