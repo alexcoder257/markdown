@@ -135,6 +135,7 @@ Redux thunk giúp tách biệt logic xử lý bất đồng bộ, call API và t
 - productId: tương ứng với payload truyền vào
 - thunkAPI: có thêm các thuộc tính như getState, dispatch, rejectWithValue ,... để tương tác với state
 - action.payload: chính là giá trị mà createAsyncThunk trả về
+- product/fetchProducts: Tên định danh và là unique. Đây là tên duy nhất dùng để xác định action trong Redux DevTools hoặc khi cần xử lý trong extraReducers.
 
 ```javascript
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
@@ -232,4 +233,190 @@ function App() {
     </div>
   );
 }
+```
+
+# Redux Saga
+
+#### Definition
+
+Saga: là một Generator function dùng để quản lý side effect. Redux-Saga sử dụng các Generator functions của Javascript, cho phép viết code bất đồng bộ trông giống đồng bộ
+Các effect thường được sử dụng:
+
+- call: Gọi API hoặc hàm bất đồng bộ
+- put: Dispatch action
+- takeEvery / takeLatest: Lắng nghe và xử lý action
+- all: Chạy song song các Saga
+
+#### Setup
+
+#### 1. Slice
+
+@/feature/comment/commentSlice.ts
+
+```javascript
+import { createSlice } from "@reduxjs/toolkit";
+
+const commentSlice = createSlice({
+  name: "comment",
+  initialState: {
+    data: [],
+    loading: false,
+    error: null,
+  },
+  reducers: {
+    fetchCommentsRequest: (state) => {
+      state.loading = true;
+    },
+    fetchCommentsSuccess: (state, action) => {
+      state.loading = false;
+      state.data = action.payload;
+    },
+    fetchCommentsFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
+  },
+});
+
+export const {
+  fetchCommentsRequest,
+  fetchCommentsSuccess,
+  fetchCommentsFailure,
+} = commentSlice.actions;
+export default commentSlice.reducer;
+```
+
+#### 2. Saga
+
+@/features/comment/commentSaga.ts
+
+```javascript
+import { call, put, takeEvery } from "redux-saga/effects";
+import {
+  fetchCommentsFailure,
+  fetchCommentsRequest,
+  fetchCommentsSuccess,
+} from "./commentSlice";
+
+const fetchComments = async () => {
+  try {
+    const res = await fetch("https://jsonplaceholder.typicode.com/comments");
+    const data = res.json();
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      return error.message;
+    } else {
+      return "Something went wrong!";
+    }
+  }
+};
+
+function* handleFetchComments() {
+  try {
+    const posts = yield call(fetchComments);
+    yield put(fetchCommentsSuccess(posts));
+  } catch (error) {
+    if (error instanceof Error) {
+      yield put(fetchCommentsFailure(error.message));
+    }
+  }
+}
+
+export function* watchFetchComments() {
+  yield takeEvery(fetchCommentsRequest.type, handleFetchComments);
+}
+```
+
+#### 3. Root Saga
+
+@/store/rootSaga.ts
+
+```javascript
+import { all } from "redux-saga/effects";
+import { watchFetchPosts } from "../features/post/postSaga";
+import { watchFetchComments } from "../features/comment/commentSaga";
+
+export default function* rootSaga() {
+  yield all([watchFetchPosts(), watchFetchComments()]);
+}
+```
+
+#### 4. Config store
+
+@/store
+
+```javascript
+import { configureStore } from "@reduxjs/toolkit";
+import { rootReducers } from "./rootReducer";
+import createSagaMiddleware from "redux-saga";
+import rootSaga from "./rootSaga";
+
+const sagaMiddleware = createSagaMiddleware();
+
+export const store = configureStore({
+  reducer: rootReducers,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(sagaMiddleware),
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+sagaMiddleware.run(rootSaga);
+```
+
+#### 5. Usage
+
+```javascript
+import { useEffect } from "react";
+import "./App.css";
+import { fetchCommentsRequest } from "./features/comment/commentSlice";
+import { fetchPostRequest } from "./features/post/postSlice";
+import { useAppDispatch, useAppSelector } from "./hooks";
+
+function App() {
+  const dispatch = useAppDispatch();
+  const {
+    data: posts,
+    loading: loadingPost,
+    error: errorPost,
+  } = useAppSelector((state) => state.post);
+  const {
+    data: comments,
+    loading: loadingComment,
+    error: errorComment,
+  } = useAppSelector((state) => state.comment);
+
+  useEffect(() => {
+    dispatch(fetchPostRequest());
+    dispatch(fetchCommentsRequest());
+  }, [dispatch]);
+
+  if (loadingPost || loadingComment) return <p>Loading...</p>;
+
+  if (errorPost) return <p>Error: {errorPost}</p>;
+
+  if (errorComment) return <p>Error: {errorComment}</p>;
+
+  return (
+    <div style={{ display: "flex", gap: "24px" }}>
+      <div>
+        {posts.map((post) => (
+          <p key={post.id}>{post.title}</p>
+        ))}
+      </div>
+      <div>
+        {comments.map((comment) => (
+          <div key={comment.id}>
+            <p>Email:{comment.email}</p>
+            <p>Name:{comment.name}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default App;
 ```
