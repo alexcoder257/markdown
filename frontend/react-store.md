@@ -1,6 +1,6 @@
 # Redux
 
-![alt text](images/react-store/image.png)
+![alt text](../images/react-store/image.png)
 
 - One-way data flow
 - Immutable:
