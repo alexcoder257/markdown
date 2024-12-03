@@ -104,22 +104,132 @@ const element = React.createElement(
 
 ### 4. Virtual DOM
 
-### 5. Code Splitting React.lazy và Suspense
+React Element:
 
-### 6. Life circle
+```javascript
+const element = React.createElement(
+  "div",
+  { id: "container" },
+  "Hello, World!"
+);
+```
 
-### 7. Hook
+Virtual DOM:
+
+```javascript
+{
+  type: 'div',
+  props: {
+    id: 'container',
+    children: 'Hello, World!'
+  }
+}
+```
+
+- React.createElement được sử dụng để tạo ra React Elements và chính React Elements này chính là thành phần cấu tạo của Virtual DOM.
+- Virtual DOM là một bản sao của DOM thực tế, được lưu trong bộ nhớ và không trực tiếp gắn với giao điện trình duyệt.
+- Các bước update DOM:
+  ![alt text](../images/react/image.png)
+  - Khi state/props thay đổi React tạo ra một cây Virtual DOM mới.
+  - So sánh Virtual DOM cũ và mới bằng cách check sự thay đổi giữa các node trong component tree - <b>Diffing (Tìm sự khác biệt)</b>
+  - Tìm ra sự khác biệt - <b>Reconciliation (Hợp nhất)</b>
+  - Cập nhật tối thiểu phần thay đổi vào DOM thực
+
+### 5. Code Splitting React.lazy, Suspense, Concurrent Rendering, Auto Batching
+
+#### Code Splitting - React 2019
+
+Dùng để tách ứng dụng thành các phần nhỏ và chỉ tải chúng khi cần thiết thay vì tải toàn bộ từ đầu.
+Lợi ích là giúp tăng tốc độ tải trang ban đầu, giảm dung lượng file Javascript phân chia mã nguồn thành các gói nhỏ giúp trình duyệt tải và phân tích nhanh hơn.
+
+- Dynamic Import
+  - Sử dụng React.lazy() để làm dynamic import. Nó chỉ tải component khi cpn đó được render lần đầu tiên.
+  - Được kết hợp với Suspense để hiển thị fallback UI khi component đang tải (loading).
+
+=> Đối với server side thì nó sẽ build app thành các bundle ứng với các route và khi call route nào thì nó sẽ chỉ trả về bundle của route đó thôi.
+
+#### Concurrent Rendering - React 2022 - React 18
+
+- Concurrent Rendering cho phép React tạm dừng hoặc ngắt quãng quá trình render (render phase) để xử lý tác vụ ưu tiên cao hơn chẳng hạn như phản hồi tương tác người dùng như click, hover, scroll.
+- Trong môi trường concurrent việc "hoàn thành render" có thể bị trì hoãn đến khi react quyết định rằng các phần quan trọng đã được xử lý.
+- Có 2 giai đoạn render là Render Phase và Commit Phase.
+  - Render phase: React chuẩn bị DOM ảo và tính toán các thay đổi cần thiết.Giai đoạn này có thể bị trì hoãn trong Concurrent Rendering
+  - Commit Phase: React thực sự cập nhật lên DOM thật và các hook như useEffect hay useLayoutEffect sẽ đưa vào hàng đợi. Commit phase luôn là một quá trình đồng bộ tức là React sẽ quyết định bắt đầu commit nó sẽ chạy đến khi hoàn tất.
+
+#### Auto Batching
+
+Cơ chế auto Batching là react sẽ gom các cập nhật State lại thành 1 nhóm rồi sau đó mới tiến hành cập nhật 1 lượt thay vì mỗi 1 thay đổi là lại cập nhật state. Khi gọi setState bản chất là nó đưa các hàm setState vào trong bộ nhớ đệm queue và sau khi hoàn tất event hoặc các hàm bất đồng bộ thì nó mới chạy toàn bộ queue đó để cập nhật state.
+=> Cái này chính là lý do tại sao nếu sử dụng state mới ngay sau khi setState thì ta vẫn nhận được giá trị cũ của state đó.
+
+### 7. Hooks
+
+#### useLayoutEffect
+
+Khác với useEffect là nó sẽ chạy sau khi DOM thực tế và trình duyệt đã toàn tất việc paint. Với useLayoutEffect nó sẽ chạy ngay sau khi DOM thực tế được hoàn tất và trước khi được paint lên trình duyệt vì vậy nó cho phép cập nhật những thay đổi DOM trước khi người dùng có thể nhìn thấy.
 
 #### useCallback
 
-#### useMemo
-
-#### React.memo
-
-#### useActionState
+- useCallback - memoize function.
+  Mỗi lần khi component được mount vào DOM thì nó sẽ render ra toàn bộ các function cũng như UI. Mỗi khi state thay đổi thì nó sẽ render lại component và khiến các function cũng được khởi tạo lại sau mỗi lần re-render.
+- Điểm giống so với function bình thường là useCallback cũng sẽ được render lần đầu tiên tương tự như các function khác nhưng trong lần render tiếp theo nếu như dependency không thay đổi thì hàm useCallback sẽ không cần khởi tạo lại nữa nếu như hàm useCallback chứa các logic phức tạp thì nó sẽ tăng cường hiệu năng nhiều cho component.
+- useCallback có thể kết hợp tốt với useEffect vì khi cho useCallback làm dependency thì mỗi khi dependency của useCallback thay đổi thì nó mới khởi tạo lại function và chạy vào useCallback.
+- Đối với các hàm đơn gian thì không nhất thiết phải bọc trong useCallback vì nó chỉ là minor improvement
+- Lưu ý: Nếu sử dụng useCallback thì cần kiểm tra kỹ xem hàm có phụ thuộc vào biến nào từ state hoặc props không. Nếu có thì bắt buộc phải thêm vào dependency vì nếu không thêm vào dependency thì khi gọi hàm nó sẽ lấy giá trị cũ của biến đó dẫn tới giá trị sai hoặc các lỗi khó phát hiện.
+- Chỉ dùng useCallback với dependency là rỗng khi hàm đó không phụ thuộc vào bất cứ biến nào truyền vào.
 
 #### useContext
+
+```javascript
+import { createContext, useContext, useEffect, useState } from "react";
+
+const GlobalContext = (createContext < string) | (null > null);
+
+export const useGlobalContext = () => {
+  const contextValue = useContext(GlobalContext);
+
+  if (!contextValue) {
+    throw new Error(
+      "useGlobalContext must be called from within an GlobalProvider"
+    );
+  }
+
+  return contextValue;
+};
+
+export default function GlobalProvider({
+  children,
+}: {
+  children: React.ReactNode,
+}) {
+  const [value, setValue] = (useState < string) | (null > "");
+
+  useEffect(() => {
+    setValue("value context");
+  }, []);
+  return (
+    <GlobalContext.Provider value={value}>{children}</GlobalContext.Provider>
+  );
+}
+```
+
+### 8. Hooks React 18
 
 #### useDebugValue
 
 #### useDeferredValue
+
+#### useId
+
+#### useInsertionEffect
+
+#### useSyncExternalStore
+
+#### useTransition
+
+### 9. Hooks React 19
+
+#### useOptimistic
+
+#### useActionState
+
+#### useFormStatus
