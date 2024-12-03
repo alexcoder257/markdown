@@ -1,13 +1,20 @@
 # Next JS
 
-### 1. Routing
+### 1. History
 
-### 2. Rendering
+### 2. Routing
 
-### 3. Data Fetching
+#### Colocation
 
-### 4. Styling
+![alt text](image.png)
+Chỉ có file name là page hoặc route mới được tính là public address.
 
-### 5. Optimizations
+### 3. Rendering
 
-### 6. Typescript
+### 4. Data Fetching
+
+### 5. Styling
+
+### 6. Optimizations
+
+### 7. Typescript
