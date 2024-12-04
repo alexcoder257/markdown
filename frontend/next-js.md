@@ -6,7 +6,7 @@
 
 #### Colocation
 
-![alt text](image.png)
+![alt text](../images/next-js/image.png)
 Chỉ có file name là page hoặc route mới được tính là public address.
 
 ### 3. Rendering

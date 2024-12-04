@@ -1,0 +1,2 @@
+- Diffing (short for difference): Khác biệt
+- Reconciliation (/ˌrek.ənˌsɪl.iˈeɪ.ʃən/): Đồng bộ, hợp nhất
